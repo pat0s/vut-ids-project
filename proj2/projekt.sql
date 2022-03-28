@@ -26,18 +26,38 @@ CREATE TABLE KLIENT(
     CONSTRAINT PK_ID_klient PRIMARY KEY (ID_klient)
 );
 
+
+
 CREATE TABLE UCET (
-    c_uctu NUMBER NOT NULL,
+    c_uctu NUMBER NOT NULL CHECK(REGEXP_LIKE(c_uctu, '^[0-9]{6,14}$')), -- 2-10 je pre cislo uctu a 4 je pre cislo banky
     datum_zalozenia DATE NOT NULL,
     zostatok DECIMAL(20, 2) DEFAULT 0,
     IBAN VARCHAR(24) CHECK(REGEXP_LIKE(IBAN, '^[A-Z]{2}[0-9]{22}$')),
     urok DECIMAL(6, 3),
     poplatok DECIMAL(10, 3),
     ID_klient INTEGER NOT NULL,
-    CHECK (
+    CONSTRAINT typ_uctu CHECK (
         ((urok is NULL) and (poplatok is not NULL) or
         (urok is not NULL) and (poplatok is NULL))
         ),
+
+
+    
+    --  CONSTRAINT valid_c_uctu CHECK(
+    --      (
+    --         1 * CAST(SUBSTR(account_number, 1, 1) AS INTEGER) +
+    --         2 * CAST(SUBSTR(account_number, 2, 1) AS INTEGER) +
+    --         3 * CAST(SUBSTR(account_number, 3, 1) AS INTEGER) +
+    --         4 * CAST(SUBSTR(account_number, 4, 1) AS INTEGER) +
+    --         5 * CAST(SUBSTR(account_number, 5, 1) AS INTEGER) +
+    --         6 * CAST(SUBSTR(account_number, 6, 1) AS INTEGER) +
+    --         7 * CAST(SUBSTR(account_number, 7, 1) AS INTEGER)
+    --         )%11 = 0
+    -- )
+    -- --     DECLARE @counter INT
+    -- --     SET @counter = 1
+
+    -- -- ),
 
     CONSTRAINT PK_c_uctu PRIMARY KEY (c_uctu),
     CONSTRAINT FK_ID_klient FOREIGN KEY (ID_klient) REFERENCES KLIENT
@@ -116,40 +136,40 @@ VALUES('Alena', 'Nova', 'Purkynova', 'Brno', 'alena@banka.cz', '362154783', '936
 
 -- Účty
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(1, TO_DATE('2020-05-03', 'YYYY-MM-DD'), 100.40, 'SK10000000000000025698745', 1.225, NULL, 1);
+VALUES(114400, TO_DATE('2020-05-03', 'YYYY-MM-DD'), 100.40, 'SK1000000000000025698745', 1.225, NULL, 1);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(2, TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2895.56, 'SK10000000000000025698746', NULL, 20.4, 1);
+VALUES(224400, TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2895.56, 'SK1000000000000025698746', NULL, 20.4, 1);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(3, TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK20000000000000078611745', NULL, 7.25, 2);
+VALUES(334400, TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000078611745', NULL, 7.25, 2);
 
 -- Disponuje
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (2, 3, 1000);
+VALUES (224400, 3, 1000);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (3, 3, 500);
+VALUES (334400, 3, 500);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (3, 4, 200);
+VALUES (334400, 4, 200);
 
 -- Spravuje
-INSERT INTO SPRAVUJE(ID_zamestanec, c_uctu)
-VALUES(1, 2);
-INSERT INTO SPRAVUJE(ID_zamestanec, c_uctu)
-VALUES(1, 3);
-INSERT INTO SPRAVUJE(ID_zamestanec, c_uctu)
-VALUES(2, 1);
+INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
+VALUES(1, 224400);
+INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
+VALUES(1, 334400);
+INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
+VALUES(2, 114400);
 
 -- Výpisy
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 1);
+VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 114400);
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2022-02-02', 'YYYY-MM-DD'), 3);
+VALUES(TO_DATE('2022-02-02', 'YYYY-MM-DD'), 334400);
 
 -- Príkazy
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.5, "Vyber", 2);
+VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.5, 'vyber', 224400);
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-03-27', 'YYYY-MM-DD'), 1000, "Vklad", 3);
+VALUES(TO_DATE('2022-03-27', 'YYYY-MM-DD'), 1000, 'vklad', 334400);
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-01-31', 'YYYY-MM-DD'), 250.50, "Platba", 3);
+VALUES(TO_DATE('2022-01-31', 'YYYY-MM-DD'), 250.50, 'platba', 334400);
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-02-01', 'YYYY-MM-DD'), 40.78, "Platba", 3);
+VALUES(TO_DATE('2022-02-01', 'YYYY-MM-DD'), 40.78, 'platba', 334400);
