@@ -9,8 +9,6 @@ DROP TABLE DISPONUJE CASCADE CONSTRAINTS;
 DROP TABLE UCET CASCADE CONSTRAINTS;
 DROP TABLE KLIENT CASCADE CONSTRAINTS;
 
--- TODO: osetrenie rodneho cisla a zmena dlzky
--- TODO: podrobnejsie osetrenie IBAN-u
 
 CREATE TABLE KLIENT(
     ID_klient INTEGER GENERATED AS IDENTITY NOT NULL,
@@ -40,24 +38,6 @@ CREATE TABLE UCET (
         ((urok is NULL) and (poplatok is not NULL) or
         (urok is not NULL) and (poplatok is NULL))
         ),
-
-
-    
-    --  CONSTRAINT valid_c_uctu CHECK(
-    --      (
-    --         1 * CAST(SUBSTR(account_number, 1, 1) AS INTEGER) +
-    --         2 * CAST(SUBSTR(account_number, 2, 1) AS INTEGER) +
-    --         3 * CAST(SUBSTR(account_number, 3, 1) AS INTEGER) +
-    --         4 * CAST(SUBSTR(account_number, 4, 1) AS INTEGER) +
-    --         5 * CAST(SUBSTR(account_number, 5, 1) AS INTEGER) +
-    --         6 * CAST(SUBSTR(account_number, 6, 1) AS INTEGER) +
-    --         7 * CAST(SUBSTR(account_number, 7, 1) AS INTEGER)
-    --         )%11 = 0
-    -- )
-    -- --     DECLARE @counter INT
-    -- --     SET @counter = 1
-
-    -- -- ),
 
     CONSTRAINT PK_c_uctu PRIMARY KEY (c_uctu),
     CONSTRAINT FK_ID_klient FOREIGN KEY (ID_klient) REFERENCES KLIENT
