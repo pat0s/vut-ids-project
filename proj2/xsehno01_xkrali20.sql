@@ -24,10 +24,8 @@ CREATE TABLE KLIENT(
     CONSTRAINT PK_ID_klient PRIMARY KEY (ID_klient)
 );
 
-
-
 CREATE TABLE UCET (
-    c_uctu NUMBER NOT NULL CHECK(REGEXP_LIKE(c_uctu, '^[0-9]{6,14}$')), -- 2-10 je pre cislo uctu a 4 je pre cislo banky
+    c_uctu VARCHAR(15) NOT NULL,
     datum_zalozenia DATE NOT NULL,
     zostatok DECIMAL(20, 2) DEFAULT 0,
     IBAN VARCHAR(24) CHECK(REGEXP_LIKE(IBAN, '^[A-Z]{2}[0-9]{22}$')),
@@ -39,12 +37,28 @@ CREATE TABLE UCET (
         (urok is not NULL) and (poplatok is NULL))
         ),
 
+    CONSTRAINT c_uctu_valid CHECK (
+        REGEXP_LIKE(c_uctu, '^\d{10}/\d{4}$') and MOD(
+            (
+            6 * CAST(SUBSTR(c_uctu, 1, 1) AS INTEGER) +
+            3 * CAST(SUBSTR(c_uctu, 2, 1) AS INTEGER) +
+            7 * CAST(SUBSTR(c_uctu, 3, 1) AS INTEGER) +
+            9 * CAST(SUBSTR(c_uctu, 4, 1) AS INTEGER) +
+            10 * CAST(SUBSTR(c_uctu, 5, 1) AS INTEGER) +
+            5 * CAST(SUBSTR(c_uctu, 6, 1) AS INTEGER) +
+            8 * CAST(SUBSTR(c_uctu, 7, 1) AS INTEGER) +
+            4 * CAST(SUBSTR(c_uctu, 8, 1) AS INTEGER) +
+            2 * CAST(SUBSTR(c_uctu, 9, 1) AS INTEGER) +
+            1 * CAST(SUBSTR(c_uctu, 10, 1) AS INTEGER)
+            ), 11) = 0
+    ),
+
     CONSTRAINT PK_c_uctu PRIMARY KEY (c_uctu),
     CONSTRAINT FK_ID_klient FOREIGN KEY (ID_klient) REFERENCES KLIENT
 );
 
 CREATE TABLE DISPONUJE(
-    c_uctu NUMBER NOT NULL,
+    c_uctu VARCHAR(15) NOT NULL,
     ID_klient INTEGER NOT NULL,
     limit DECIMAL(20, 2) DEFAULT 0,
 
@@ -69,7 +83,7 @@ CREATE TABLE ZAMESTNANEC(
 
 CREATE TABLE SPRAVUJE (
     ID_zamestnanec INTEGER NOT NULL,
-    c_uctu NUMBER NOT NULL,
+    c_uctu VARCHAR(15) NOT NULL,
 
     CONSTRAINT FK_ID_zamestnanec FOREIGN KEY (ID_zamestnanec) REFERENCES ZAMESTNANEC,
     CONSTRAINT FK_c_uctu FOREIGN KEY (c_uctu) REFERENCES UCET,
@@ -79,7 +93,7 @@ CREATE TABLE SPRAVUJE (
 CREATE TABLE VYPIS (
     poradove_cislo INTEGER GENERATED ALWAYS AS IDENTITY NOT NULL,
     datum_zalozenia DATE NOT NULL,
-    c_uctu NUMBER NOT NULL,
+    c_uctu VARCHAR(15) NOT NULL,
 
     CONSTRAINT PK_poradove_cislo_vypis PRIMARY KEY (poradove_cislo, c_uctu),
     CONSTRAINT FK_c_uctu_vypis FOREIGN KEY (c_uctu) REFERENCES UCET
@@ -89,13 +103,12 @@ CREATE TABLE PRIKAZ(
     poradove_cislo INTEGER GENERATED ALWAYS AS IDENTITY NOT NULL,
     datum DATE NOT NULL,
     ciastka DECIMAL(20, 2),
-    typ VARCHAR(6) CHECK(typ = 'vklad' or typ = 'vyber' or typ = 'prevod' or typ = 'inkaso' or typ = 'platba'),
-    c_uctu NUMBER NOT NULL,
+    typ VARCHAR(6) CHECK(typ IN ('vklad', 'vyber', 'prevod', 'inkaso', 'platba')),
+    c_uctu VARCHAR(15) NOT NULL,
 
     CONSTRAINT PK_poradove_cislo_prikaz PRIMARY KEY (poradove_cislo, c_uctu),
     CONSTRAINT FK_c_uctu_prikaz FOREIGN KEY (c_uctu) REFERENCES UCET
 );
-
 -- Proj2 - vlozenie vzorovych dat
 
 -- Klienti
@@ -128,84 +141,84 @@ VALUES('Majka', 'Vysoka', 'Purkynova', 'Brno', 'majka@banka.cz', '362116783', '9
 
 -- Účty
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(114400, TO_DATE('2020-05-03', 'YYYY-MM-DD'), 100.40, 'SK1000000000000025698745', 1.225, NULL, 1);
+VALUES('1234567901/0300', TO_DATE('2020-05-03', 'YYYY-MM-DD'), 100.40, 'SK1000000000000025698745', 1.225, NULL, 1);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(224400, TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2895.56, 'SK1000000000000025698746', NULL, 20.4, 1);
+VALUES('1234567928/0300', TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2895.56, 'SK1000000000000025698746', NULL, 20.4, 1);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(334400, TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000078611745', NULL, 7.25, 2);
+VALUES('1234567936/0300', TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000078611745', NULL, 7.25, 2);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(444400, TO_DATE('2020-05-03', 'YYYY-MM-DD'), 1030.40, 'SK1000000000000044698745', 1.225, NULL, 4);
+VALUES('1234567944/0300', TO_DATE('2020-05-03', 'YYYY-MM-DD'), 1030.40, 'SK1000000000000044698745', 1.225, NULL, 4);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(554400, TO_DATE('2020-06-07', 'YYYY-MM-DD'), 22895.56, 'SK1000000000000055698746', 0.23, NULL, 3);
+VALUES('1234567952/0300', TO_DATE('2020-06-07', 'YYYY-MM-DD'), 22895.56, 'SK1000000000000055698746', 0.23, NULL, 3);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(664400, TO_DATE('2019-07-10', 'YYYY-MM-DD'), 14000.40, 'SK2000000000000079611745', NULL, 10.25, 5);
+VALUES('1234567960/0300', TO_DATE('2019-07-10', 'YYYY-MM-DD'), 14000.40, 'SK2000000000000079611745', NULL, 10.25, 5);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(774400, TO_DATE('2020-05-03', 'YYYY-MM-DD'), 130.40, 'SK1000000000000044698745', 1.2, NULL, 7);
+VALUES('1234567979/0300', TO_DATE('2020-05-03', 'YYYY-MM-DD'), 130.40, 'SK1000000000000044698745', 1.2, NULL, 7);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(884400, TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2295.56, 'SK1000000000000055698746', 0.65, NULL, 8);
+VALUES('1234567987/0300', TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2295.56, 'SK1000000000000055698746', 0.65, NULL, 8);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES(994400, TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000079611745', NULL, 10.5, 6);
+VALUES('1234567995/0300', TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000079611745', NULL, 10.5, 6);
 
 -- Disponuje
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (224400, 3, 1000);
+VALUES ('1234567901/0300', 3, 1000);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (334400, 3, 500);
+VALUES ('1234567952/0300', 3, 500);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (334400, 4, 200);
+VALUES ('1234567987/0300', 4, 200);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (224400, 6, 500);
+VALUES ('1234567901/0300', 6, 500);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (664400, 7, 200);
+VALUES ('1234567995/0300', 7, 200);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (554400, 6, 400);
+VALUES ('1234567995/0300', 6, 400);
 
 -- Spravuje
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(1, 224400);
+VALUES(1, '1234567960/0300');
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(1, 334400);
+VALUES(1, '1234567979/0300');
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(2, 114400);
+VALUES(2, '1234567952/0300');
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(3, 444400);
+VALUES(3, '1234567987/0300');
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(4, 554400);
+VALUES(4, '1234567901/0300');
 INSERT INTO SPRAVUJE(ID_zamestnanec, c_uctu)
-VALUES(4, 664400);
+VALUES(4, '1234567995/0300');
 
 -- Výpisy
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 114400);
+VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), '1234567952/0300');
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2022-02-02', 'YYYY-MM-DD'), 334400);
+VALUES(TO_DATE('2022-02-02', 'YYYY-MM-DD'), '1234567979/0300');
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 554400);
+VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), '1234567995/0300');
 INSERT INTO VYPIS(datum_zalozenia, c_uctu)
-VALUES(TO_DATE('2022-02-03', 'YYYY-MM-DD'), 334400);
+VALUES(TO_DATE('2022-02-03', 'YYYY-MM-DD'), '1234567987/0300');
 
 -- Príkazy
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.5, 'vyber', 224400);
+VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.5, 'vyber', '1234567987/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-03-27', 'YYYY-MM-DD'), 1000, 'vklad', 334400);
+VALUES(TO_DATE('2022-03-27', 'YYYY-MM-DD'), 1000, 'vklad', '1234567987/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-01-31', 'YYYY-MM-DD'), 250.50, 'platba', 334400);
+VALUES(TO_DATE('2022-01-31', 'YYYY-MM-DD'), 250.50, 'platba', '1234567995/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-02-01', 'YYYY-MM-DD'), 40.78, 'inkaso', 334400);
+VALUES(TO_DATE('2022-02-01', 'YYYY-MM-DD'), 40.78, 'inkaso', '1234567995/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 10.5, 'prevod', 444400);
+VALUES(TO_DATE('2021-01-11', 'YYYY-MM-DD'), 10.5, 'prevod', '1234567979/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-03-28', 'YYYY-MM-DD'), 1060, 'vklad', 554400);
+VALUES(TO_DATE('2022-03-28', 'YYYY-MM-DD'), 1060, 'vklad', '1234567979/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-01-03', 'YYYY-MM-DD'), 252.50, 'platba', 774400);
+VALUES(TO_DATE('2022-01-03', 'YYYY-MM-DD'), 252.50, 'platba', '1234567952/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-02-05', 'YYYY-MM-DD'), 400.78, 'prevod', 664400);
+VALUES(TO_DATE('2022-02-05', 'YYYY-MM-DD'), 400.78, 'prevod', '1234567952/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2021-01-15', 'YYYY-MM-DD'), 104.5, 'vyber', 774400);
+VALUES(TO_DATE('2021-01-15', 'YYYY-MM-DD'), 104.5, 'vyber', '1234567936/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-03-22', 'YYYY-MM-DD'), 140, 'vklad', 554400);
+VALUES(TO_DATE('2022-03-22', 'YYYY-MM-DD'), 140, 'vklad', '1234567936/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-01-30', 'YYYY-MM-DD'), 20.50, 'vklad', 554400);
+VALUES(TO_DATE('2022-01-30', 'YYYY-MM-DD'), 20.50, 'vklad', '1234567944/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
-VALUES(TO_DATE('2022-02-09', 'YYYY-MM-DD'), 400.78, 'platba', 114400);
+VALUES(TO_DATE('2022-02-09', 'YYYY-MM-DD'), 400.78, 'platba', '1234567944/0300');
