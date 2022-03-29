@@ -154,7 +154,7 @@ VALUES (334400, 3, 500);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
 VALUES (334400, 4, 200);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
-VALUES (554400, 6, 500);
+VALUES (224400, 6, 500);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
 VALUES (664400, 7, 200);
 INSERT INTO DISPONUJE(c_uctu, ID_klient, limit)
