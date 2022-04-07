@@ -231,7 +231,6 @@ SELECT meno, priezvisko, COUNT(*)
 FROM ZAMESTNANEC NATURAL JOIN SPRAVUJE
 GROUP BY meno, priezvisko;
 
-
 -- Ktorí klienti vytvorili príkaz s hodnotou minimánle 500€
 SELECT meno, priezvisko
 FROM KLIENT
@@ -241,12 +240,10 @@ WHERE ID_klient IN
         (SELECT c_uctu FROM PRIKAZ
             WHERE ciastka >= 500));
 
-
 -- Ktorí klienti a na akom účte vytvorili výpis z účtu za obdobie 1.2.2022 - 31.3.2022
 SELECT meno, priezvisko, c_uctu
 FROM KLIENT NATURAL JOIN UCET JOIN VYPIS V using(c_uctu)
 WHERE V.datum_zalozenia BETWEEN TO_DATE('2022-02-01', 'YYYY-MM-DD') AND TO_DATE('2022-03-31', 'YYYY-MM-DD');
-
 
 -- Ktorí klienti sú vlastníkmi sporiaceho aj bežného účtu
 SELECT K.meno, K.priezvisko
@@ -257,10 +254,19 @@ WHERE K.ID_klient=U.ID_klient AND urok IS NOT NULL
           WHERE K.ID_klient=U.ID_klient AND
                 U.poplatok IS NOT NULL);
 
-
 -- Jednotliví klienti a suma, ktorou disponujú na všetkých účtoch,
 -- zoradení od najväčšieho limitu po najmenší
 SELECT meno, priezvisko, SUM(limit) celkovy_limit
 FROM KLIENT join DISPONUJE USING(ID_klient)
 GROUP BY meno, priezvisko
 ORDER BY celkovy_limit DESC;
+
+-- Výpis klientov, ktorí majú sporiaci účet
+SELECT meno, priezvisko
+FROM KLIENT NATURAL JOIN UCET
+WHERE urok IS NOT NULL;
+
+--Výpis zamestnancov, ktorí spravovali uz bežný účet
+SELECT DISTINCT meno, priezvisko
+FROM ZAMESTNANEC NATURAL JOIN UCET
+WHERE poplatok IS NOT NULL;
