@@ -111,7 +111,10 @@ CREATE TABLE PRIKAZ(
 );
 
 --Triggers
-
+/*
+ Trigger sa zavola pred vlozenim alebo updatom zostatku v tabulke UCET.
+ Zmeni urok na sporiacom ucte, ak ma uzivatel na tomto ucte zostatok vacsi ako 99999.
+ */
 CREATE OR REPLACE TRIGGER ZMENA_UROKU
     BEFORE INSERT OR UPDATE OF zostatok ON UCET
     FOR EACH ROW
@@ -125,13 +128,21 @@ CREATE OR REPLACE TRIGGER ZMENA_UROKU
     END;
 /
 
---TODO
+/*
+ Trigger, ktory sa zavola pred vkladanim alebo updateom rodneho cisla,
+ do ktoreho sa v pripade chybajuceho lomitka / toto lomitko vlozi pre zachovanie spravneho a ocakavaneho formatu rodneho cisla
+ */
 CREATE OR REPLACE TRIGGER ZMENA_FORMATU_RODNEHO_CISLA
-    BEFORE INSERT OR UPDATE OF TELEFON  ON ZAMESTNANEC
+    BEFORE INSERT OR UPDATE OF rodne_cislo  ON KLIENT
     FOR EACH ROW
+    declare
+        position Integer;
+
     BEGIN
-        IF SUBSTR(:NEW.telefon, 1, 1) = '0' THEN
-            :NEW.telefon := '000000000';
+        position := INSTR(:NEW.rodne_cislo, '/');
+        IF position IS NULL OR position = 0 then
+           :NEW.rodne_cislo := substr(:NEW.rodne_cislo,1,6) || '/' || substr(:NEW.rodne_cislo,7,4);
+
         end if;
     END;
 /
@@ -147,13 +158,13 @@ VALUES('Dalibor', 'Kralik', 'Purkynova', 'Brno', 'dalibor@gmail.com', '456253124
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Jan', 'Novak', 'Staromestska', 'Praha', 'jan@centrum.cz', '445322564', '011210/3356', TO_DATE('2001-12-10', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Anna', 'Novakova', 'Staromestska', 'Praha', 'anna@gmail.com', '987562365', '025707/3366', TO_DATE('2002-07-07', 'YYYY-MM-DD'));
+VALUES('Anna', 'Novakova', 'Staromestska', 'Praha', 'anna@gmail.com', '987562365', '0257073366', TO_DATE('2002-07-07', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Stefan', 'Eiselle', 'Smitkeho', 'Nemsova', 'eisellestefan@gmail.com', '771119123', '040111/0010', TO_DATE('2002-05-03', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Maros', 'Karci', 'Purkynova', 'Brno', 'karcimaros@gmail.com', '111253124', '020201/0016', TO_DATE('2004-02-01', 'YYYY-MM-DD'));
+VALUES('Maros', 'Karci', 'Purkynova', 'Brno', 'karcimaros@gmail.com', '111253124', '0202010016', TO_DATE('2004-02-01', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Jan', 'Sekino', 'Staromestska', 'Praha', 'jansekino@centrum.cz', '445344564', '011205/3356', TO_DATE('2005-12-10', 'YYYY-MM-DD'));
+VALUES('Jan', 'Sekino', 'Staromestska', 'Praha', 'jansekino@centrum.cz', '445344564', '0112053356', TO_DATE('2005-12-10', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Anna', 'Nova', 'Staromestska', 'Olomouc', 'annamaria@gmail.com', '987562317', '025717/3366', TO_DATE('2005-07-07', 'YYYY-MM-DD'));
 
@@ -228,6 +239,8 @@ VALUES(TO_DATE('2022-02-03', 'YYYY-MM-DD'), '1234567987/0300');
 -- Príkazy
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
 VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.5, 'vyber', '1234567987/0300');
+INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
+VALUES(TO_DATE('2021-01-10', 'YYYY-MM-DD'), 10.7, 'vyber', '1234567987/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
 VALUES(TO_DATE('2022-03-27', 'YYYY-MM-DD'), 1000, 'vklad', '1234567987/0300');
 INSERT INTO PRIKAZ(datum, ciastka, typ, c_uctu)
@@ -311,7 +324,7 @@ GRANT ALL ON UCET TO XKRALI20;
 GRANT ALL ON KLIENT TO XKRALI20;
 
 
---Materialized view --TODO z tabulky ineho usera
+--Materialized view 
 DROP MATERIALIZED VIEW POCET_UCTOV_KLIENTA;
 
 CREATE MATERIALIZED VIEW POCET_UCTOV_KLIENTA
@@ -321,35 +334,33 @@ REFRESH ON COMMIT AS
     GROUP BY ID_klient;
 
 
---Triggers
-/*
-CREATE OR REPLACE TRIGGER ZMENA_UROKU
-    BEFORE INSERT OR UPDATE OF zostatok ON UCET
-    FOR EACH ROW
-    BEGIN
-        IF :NEW.urok IS NOT NULL AND :NEW.zostatok >= 100000 THEN
-
-            :NEW.urok:= 0.5;
-        ELSIF :NEW.urok IS NOT NULL THEN
-            :NEW.urok := 1.225;
-        end if;
-    END;
-/
-*/
 SELECT * FROM UCET;
 
-SELECT * FROM ZAMESTNANEC;
+SELECT * FROM KLIENT;
+
+-- Vypis klienta, cisla uctu, poctu prikazov, ktore boli vykonane nad uctami klienta a suma ciastok prikazov.
+-- First run without indexes
+EXPLAIN PLAN FOR
+SELECT ID_klient, meno, priezvisko, c_uctu, count(*), sum(ciastka)
+FROM KLIENT natural join UCET join PRIKAZ using(c_uctu)
+GROUP BY ID_klient, meno, priezvisko, c_uctu;
+
+SELECT *
+FROM TABLE (DBMS_XPLAN.DISPLAY);
+
+DROP INDEX KLIENT_INDEX;
+DROP INDEX UCET_INDEX;
 
 
-/*
-CREATE OR REPLACE TRIGGER TELEFONNI_PREDVOLBA
-    BEFORE INSERT OR UPDATE OF TELEFON  ON ZAMESTNANEC
-    FOR EACH ROW
-    BEGIN
-        IF :NEW.telefon(0) = 0 THEN
-            :NEW.telefon = 000000000;
-        end if;
-    END;
-*/
-/
+CREATE INDEX KLIENT_INDEX on KLIENT(ID_klient, meno, priezvisko);
+CREATE INDEX UCET_INDEX on UCET(ID_klient, c_uctu);
 
+
+--Second run with indexes
+EXPLAIN PLAN FOR
+SELECT ID_klient, meno, priezvisko, c_uctu, count(*), sum(ciastka)
+FROM KLIENT natural join UCET join PRIKAZ using(c_uctu)
+GROUP BY ID_klient, meno, priezvisko, c_uctu;
+
+SELECT *
+FROM TABLE (DBMS_XPLAN.DISPLAY);
