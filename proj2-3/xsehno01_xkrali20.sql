@@ -112,8 +112,8 @@ CREATE TABLE PRIKAZ(
 
 --Triggers
 /*
- Trigger sa zavola pred vlozenim alebo updatom zostatku v tabulke UCET.
- Zmeni urok na sporiacom ucte, ak ma uzivatel na tomto ucte zostatok vacsi ako 99999.
+ Trigger sa zavolá pred vložením alebo updatom zostatku v tabulke UCET.
+ Zmení úrok na sporiacom účte, ak ma uživatel na tomto účte zostatok vacsi ako 99999.
  */
 CREATE OR REPLACE TRIGGER ZMENA_UROKU
     BEFORE INSERT OR UPDATE OF zostatok ON UCET
@@ -129,8 +129,8 @@ CREATE OR REPLACE TRIGGER ZMENA_UROKU
 /
 
 /*
- Trigger, ktory sa zavola pred vkladanim alebo updateom rodneho cisla,
- do ktoreho sa v pripade chybajuceho lomitka / toto lomitko vlozi pre zachovanie spravneho a ocakavaneho formatu rodneho cisla
+ Trigger, ktorý sa zavolá pred vkladaním alebo updatom rodného čísla,
+ do ktoreho sa v prípade chýbajúceho lomitka / toto lomitko vloží pre zachovanie správneho a očakávaného formátu rodného čísla
  */
 CREATE OR REPLACE TRIGGER ZMENA_FORMATU_RODNEHO_CISLA
     BEFORE INSERT OR UPDATE OF rodne_cislo  ON KLIENT
@@ -162,7 +162,7 @@ VALUES('Anna', 'Novakova', 'Staromestska', 'Praha', 'anna@gmail.com', '987562365
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Stefan', 'Eiselle', 'Smitkeho', 'Nemsova', 'eisellestefan@gmail.com', '771119123', '040111/0010', TO_DATE('2002-05-03', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Maros', 'Karci', 'Purkynova', 'Brno', 'karcimaros@gmail.com', '111253124', '0202010016', TO_DATE('2004-02-01', 'YYYY-MM-DD'));
+VALUES('Maros', 'Karci', 'Purkynova', 'Brno', 'karcimaros@gmail.com', '111253124', '0202010016', TO_DATE('2004-04-29', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Jan', 'Sekino', 'Staromestska', 'Praha', 'jansekino@centrum.cz', '445344564', '0112053356', TO_DATE('2005-12-10', 'YYYY-MM-DD'));
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
@@ -324,7 +324,7 @@ GRANT ALL ON UCET TO XKRALI20;
 GRANT ALL ON KLIENT TO XKRALI20;
 
 
---Materialized view 
+--Materialized view
 DROP MATERIALIZED VIEW POCET_UCTOV_KLIENTA;
 
 CREATE MATERIALIZED VIEW POCET_UCTOV_KLIENTA
@@ -338,7 +338,7 @@ SELECT * FROM UCET;
 
 SELECT * FROM KLIENT;
 
--- Vypis klienta, cisla uctu, poctu prikazov, ktore boli vykonane nad uctami klienta a suma ciastok prikazov.
+-- Vypis klienta, čísla účtu, počtu príkazov, ktoré boli vykonané nad učtami klienta a suma čiastok prikazov.
 -- First run without indexes
 EXPLAIN PLAN FOR
 SELECT ID_klient, meno, priezvisko, c_uctu, count(*), sum(ciastka)
@@ -364,3 +364,85 @@ GROUP BY ID_klient, meno, priezvisko, c_uctu;
 
 SELECT *
 FROM TABLE (DBMS_XPLAN.DISPLAY);
+
+
+
+SET SERVEROUTPUT ON;
+
+--Procedura počíta všetky príjmy a výdavky na danom účte
+CREATE OR REPLACE PROCEDURE Transakcie_na_bankovom_ucte (cislo_uctu STRING) AS
+    CURSOR prikazy_uctu is SELECT * FROM PRIKAZ WHERE c_uctu = cislo_uctu;
+    riadok_kurzoru PRIKAZ%ROWTYPE;
+    vydavky DECIMAL(20,2);
+    prijmi DECIMAL(20,2);
+    BEGIN
+        vydavky := 0;
+        prijmi := 0;
+        OPEN prikazy_uctu;
+
+        LOOP
+            FETCH prikazy_uctu INTO riadok_kurzoru;
+            EXIT WHEN prikazy_uctu%NOTFOUND;
+            IF riadok_kurzoru.typ = 'vklad' THEN
+                prijmi := prijmi + riadok_kurzoru.ciastka;
+            ELSE
+                vydavky := vydavky + riadok_kurzoru.ciastka;
+            end if;
+
+        end loop;
+
+        CLOSE prikazy_uctu;
+
+        DBMS_OUTPUT.PUT_LINE('Na ucte cislo ' || cislo_uctu||' boli príjmy ' || prijmi || ' a vydavky boli '||vydavky);
+    EXCEPTION
+        WHEN others THEN
+         DBMS_OUTPUT.PUT_LINE('Error occured in Transakcie_na_bankovom_ucte procedure.');
+    END;
+/
+
+
+-- Procedura vypíše všetkých klientov, ktorí majú dnes narodeniny => funkcia sysdate()
+CREATE OR REPLACE PROCEDURE Klienti_Narodeniny AS
+    CURSOR datum_narodenia is SELECT meno, priezvisko, datum_narodenia FROM KLIENT;
+    menoINT KLIENT.meno%type;
+    priezviskoINT KLIENT.priezvisko%type;
+    datumNarodeniaINT KLIENT.datum_narodenia%type;
+    dnesnyDatum KLIENT.datum_narodenia%type;
+    ma_niekto_narodeniny BOOLEAN;
+    BEGIN
+        OPEN datum_narodenia;
+            dnesnydatum := TO_DATE(sysdate,'DD-MM-YYYY');
+            DBMS_OUTPUT.PUT_LINE('Dnes má narodeniny: ');
+            ma_niekto_narodeniny := FALSE;
+        LOOP
+            FETCH datum_narodenia INTO menoINT, priezviskoINT, datumNarodeniaINT;
+            EXIT WHEN datum_narodenia%NOTFOUND;
+            if(substr(datumNarodeniaINT,1,5) = substr(dnesnyDatum,1,5)) then
+                DBMS_OUTPUT.PUT_LINE(menoINT || ' '|| priezviskoINT);
+                ma_niekto_narodeniny := TRUE;
+            end if;
+
+        end loop;
+        IF ma_niekto_narodeniny = TRUE THEN
+            DBMS_OUTPUT.PUT_LINE('Happy Birthday!');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Dnes nemá nikto narodeniny!');
+        end if;
+
+
+        CLOSE datum_narodenia;
+    EXCEPTION
+        WHEN others THEN
+         DBMS_OUTPUT.PUT_LINE('Error occured in Klienti_Narodeniny procedure.');
+    END;
+/
+
+begin
+ Tranzakcie_na_bankovom_ucet('1234567987/0300');
+end;
+/
+
+begin
+ Klienti_Narodeniny();
+end;
+/
