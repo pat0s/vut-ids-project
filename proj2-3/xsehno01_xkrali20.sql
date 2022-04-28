@@ -109,6 +109,34 @@ CREATE TABLE PRIKAZ(
     CONSTRAINT PK_poradove_cislo_prikaz PRIMARY KEY (poradove_cislo, c_uctu),
     CONSTRAINT FK_c_uctu_prikaz FOREIGN KEY (c_uctu) REFERENCES UCET
 );
+
+--Triggers
+
+CREATE OR REPLACE TRIGGER ZMENA_UROKU
+    BEFORE INSERT OR UPDATE OF zostatok ON UCET
+    FOR EACH ROW
+    BEGIN
+        IF :NEW.urok IS NOT NULL AND :NEW.zostatok < 100000 THEN
+
+            :NEW.urok:= 0.5;
+        ELSIF :NEW.urok IS NOT NULL THEN
+            :NEW.urok := 1.225;
+        end if;
+    END;
+/
+
+--TODO
+CREATE OR REPLACE TRIGGER ZMENA_FORMATU_RODNEHO_CISLA
+    BEFORE INSERT OR UPDATE OF TELEFON  ON ZAMESTNANEC
+    FOR EACH ROW
+    BEGIN
+        IF SUBSTR(:NEW.telefon, 1, 1) = '0' THEN
+            :NEW.telefon := '000000000';
+        end if;
+    END;
+/
+
+
 -- Proj2 - vlozenie vzorovych dat
 
 -- Klienti
@@ -131,9 +159,9 @@ VALUES('Anna', 'Nova', 'Staromestska', 'Olomouc', 'annamaria@gmail.com', '987562
 
 -- Zamestnanci
 INSERT INTO ZAMESTNANEC( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Vladimir', 'Stary', 'Nadrazni', 'Brno', 'vladimir@banka.cz', '458695245', '846014/1008', TO_DATE('1984-10-14', 'YYYY-MM-DD'));
+VALUES('Vladimir', 'Stary', 'Nadrazni', 'Brno', 'vladimir@banka.cz', '058695245', '846014/1008', TO_DATE('1984-10-14', 'YYYY-MM-DD'));
 INSERT INTO ZAMESTNANEC( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
-VALUES('Alena', 'Nova', 'Purkynova', 'Brno', 'alena@banka.cz', '362154783', '936105/2569', TO_DATE('1993-11-05', 'YYYY-MM-DD'));
+VALUES('Alena', 'Nova', 'Purkynova', 'Brno', 'alena@banka.cz', '062154783', '936105/2569', TO_DATE('1993-11-05', 'YYYY-MM-DD'));
 INSERT INTO ZAMESTNANEC( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
 VALUES('Igor', 'Pekny', 'Veveri', 'Brno', 'igorko@banka.cz', '458655245', '866014/1008', TO_DATE('1986-10-14', 'YYYY-MM-DD'));
 INSERT INTO ZAMESTNANEC( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
@@ -147,7 +175,7 @@ VALUES('1234567928/0300', TO_DATE('2020-06-07', 'YYYY-MM-DD'), 2895.56, 'SK10000
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
 VALUES('1234567936/0300', TO_DATE('2019-07-10', 'YYYY-MM-DD'), 4000.40, 'SK2000000000000078611745', NULL, 7.25, 2);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
-VALUES('1234567944/0300', TO_DATE('2020-05-03', 'YYYY-MM-DD'), 1030.40, 'SK1000000000000044698745', 1.225, NULL, 4);
+VALUES('1234567944/0300', TO_DATE('2020-05-03', 'YYYY-MM-DD'), 100030.40, 'SK1000000000000044698745', 1.225, NULL, 4);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
 VALUES('1234567952/0300', TO_DATE('2020-06-07', 'YYYY-MM-DD'), 22895.56, 'SK1000000000000055698746', 0.23, NULL, 3);
 INSERT INTO UCET(c_uctu, datum_zalozenia, zostatok, IBAN, urok, poplatok, ID_klient)
@@ -281,3 +309,47 @@ GRANT ALL ON ZAMESTNANEC TO XKRALI20;
 GRANT ALL ON DISPONUJE TO XKRALI20;
 GRANT ALL ON UCET TO XKRALI20;
 GRANT ALL ON KLIENT TO XKRALI20;
+
+
+--Materialized view --TODO z tabulky ineho usera
+DROP MATERIALIZED VIEW POCET_UCTOV_KLIENTA;
+
+CREATE MATERIALIZED VIEW POCET_UCTOV_KLIENTA
+REFRESH ON COMMIT AS
+    SELECT ID_klient, COUNT(c_uctu) Pocet_uctov
+    FROM XSEHNO01.KLIENT NATURAL JOIN UCET
+    GROUP BY ID_klient;
+
+
+--Triggers
+/*
+CREATE OR REPLACE TRIGGER ZMENA_UROKU
+    BEFORE INSERT OR UPDATE OF zostatok ON UCET
+    FOR EACH ROW
+    BEGIN
+        IF :NEW.urok IS NOT NULL AND :NEW.zostatok >= 100000 THEN
+
+            :NEW.urok:= 0.5;
+        ELSIF :NEW.urok IS NOT NULL THEN
+            :NEW.urok := 1.225;
+        end if;
+    END;
+/
+*/
+SELECT * FROM UCET;
+
+SELECT * FROM ZAMESTNANEC;
+
+
+/*
+CREATE OR REPLACE TRIGGER TELEFONNI_PREDVOLBA
+    BEFORE INSERT OR UPDATE OF TELEFON  ON ZAMESTNANEC
+    FOR EACH ROW
+    BEGIN
+        IF :NEW.telefon(0) = 0 THEN
+            :NEW.telefon = 000000000;
+        end if;
+    END;
+*/
+/
+
