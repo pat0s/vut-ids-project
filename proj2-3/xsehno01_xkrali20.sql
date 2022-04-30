@@ -68,7 +68,7 @@ CREATE TABLE DISPONUJE(
 );
 
 CREATE TABLE ZAMESTNANEC(
-    ID_zamestanec INTEGER GENERATED AS IDENTITY NOT NULL,
+    ID_zamestnanec INTEGER GENERATED AS IDENTITY NOT NULL,
     meno VARCHAR(40),
     priezvisko VARCHAR(40),
     ulica VARCHAR(255),
@@ -78,7 +78,7 @@ CREATE TABLE ZAMESTNANEC(
     rodne_cislo VARCHAR(11),
     datum_narodenia DATE NOT NULL,
 
-    CONSTRAINT PK_ID_zamestnanec PRIMARY KEY (ID_zamestanec)
+    CONSTRAINT PK_ID_zamestnanec PRIMARY KEY (ID_zamestnanec)
 );
 
 CREATE TABLE SPRAVUJE (
@@ -113,9 +113,9 @@ CREATE TABLE PRIKAZ(
 --Triggers
 /*
  Trigger sa zavolá pred vložením alebo updatom zostatku v tabulke UCET.
- Zmení úrok na sporiacom účte, ak ma uživatel na tomto účte zostatok vacsi ako 99999.
+ Zmení úrok na sporiacom účte, ak má klient na tomto účte zostatok aspoň 100_000.
  */
-CREATE OR REPLACE TRIGGER ZMENA_UROKU
+CREATE OR REPLACE TRIGGER Zmena_uroku
     BEFORE INSERT OR UPDATE OF zostatok ON UCET
     FOR EACH ROW
     BEGIN
@@ -130,9 +130,9 @@ CREATE OR REPLACE TRIGGER ZMENA_UROKU
 
 /*
  Trigger, ktorý sa zavolá pred vkladaním alebo updatom rodného čísla,
- do ktoreho sa v prípade chýbajúceho lomitka / toto lomitko vloží pre zachovanie správneho a očakávaného formátu rodného čísla
+ do ktoreho sa v prípade chýbajúceho lomítka / toto lomitko vloží pre zachovanie správneho a očakávaného formátu rodného čísla
  */
-CREATE OR REPLACE TRIGGER ZMENA_FORMATU_RODNEHO_CISLA
+CREATE OR REPLACE TRIGGER Zmena_formatu_rodneho_cisla
     BEFORE INSERT OR UPDATE OF rodne_cislo  ON KLIENT
     FOR EACH ROW
     declare
@@ -148,7 +148,7 @@ CREATE OR REPLACE TRIGGER ZMENA_FORMATU_RODNEHO_CISLA
 /
 
 
--- Proj2 - vlozenie vzorovych dat
+-- Proj2 - vloženie vzorových dát
 
 -- Klienti
 INSERT INTO KLIENT( meno, priezvisko, ulica, mesto, email, telefon, rodne_cislo, datum_narodenia)
@@ -314,7 +314,6 @@ WHERE poplatok IS NOT NULL;
 
 
 -- Projekt č.4 -- práva pre druhého člena
-
 GRANT ALL ON PRIKAZ TO XKRALI20;
 GRANT ALL ON VYPIS TO XKRALI20;
 GRANT ALL ON SPRAVUJE TO XKRALI20;
@@ -323,23 +322,23 @@ GRANT ALL ON DISPONUJE TO XKRALI20;
 GRANT ALL ON UCET TO XKRALI20;
 GRANT ALL ON KLIENT TO XKRALI20;
 
+GRANT EXECUTE ON Klienti_Narodeniny TO XKRALI20;
+GRANT EXECUTE ON Transakcie_na_bankovom_ucte TO XKRALI20;
 
---Materialized view
-DROP MATERIALIZED VIEW POCET_UCTOV_KLIENTA;
+-- Materializovaný pohľad
+DROP MATERIALIZED VIEW Pocet_uctov_zamestnancov;
 
-CREATE MATERIALIZED VIEW POCET_UCTOV_KLIENTA
+CREATE MATERIALIZED VIEW Pocet_uctov_zamestnancov
 REFRESH ON COMMIT AS
-    SELECT ID_klient, COUNT(c_uctu) Pocet_uctov
-    FROM XSEHNO01.KLIENT NATURAL JOIN UCET
-    GROUP BY ID_klient;
+    SELECT ID_zamestnanec, meno, priezvisko, COUNT(*) Pocet_uctov
+    FROM XSEHNO01.ZAMESTNANEC NATURAL JOIN SPRAVUJE
+    GROUP BY ID_zamestnanec, meno, priezvisko;
 
+--SELECT * FROM UCET;
+--SELECT * FROM KLIENT;
 
-SELECT * FROM UCET;
-
-SELECT * FROM KLIENT;
-
--- Vypis klienta, čísla účtu, počtu príkazov, ktoré boli vykonané nad učtami klienta a suma čiastok prikazov.
--- First run without indexes
+-- Výpis klienta, čísla účtu, počtu príkazov, ktoré boli vykonané nad učtami klienta a suma čiastok prikazov.
+-- Spustenie bez indexu
 EXPLAIN PLAN FOR
 SELECT ID_klient, meno, priezvisko, c_uctu, count(*), sum(ciastka)
 FROM KLIENT natural join UCET join PRIKAZ using(c_uctu)
@@ -348,15 +347,13 @@ GROUP BY ID_klient, meno, priezvisko, c_uctu;
 SELECT *
 FROM TABLE (DBMS_XPLAN.DISPLAY);
 
+-- Druhé spustenie s indexom
 DROP INDEX KLIENT_INDEX;
 DROP INDEX UCET_INDEX;
-
 
 CREATE INDEX KLIENT_INDEX on KLIENT(ID_klient, meno, priezvisko);
 CREATE INDEX UCET_INDEX on UCET(ID_klient, c_uctu);
 
-
---Second run with indexes
 EXPLAIN PLAN FOR
 SELECT ID_klient, meno, priezvisko, c_uctu, count(*), sum(ciastka)
 FROM KLIENT natural join UCET join PRIKAZ using(c_uctu)
@@ -365,11 +362,9 @@ GROUP BY ID_klient, meno, priezvisko, c_uctu;
 SELECT *
 FROM TABLE (DBMS_XPLAN.DISPLAY);
 
-
-
 SET SERVEROUTPUT ON;
 
---Procedura počíta všetky príjmy a výdavky na danom účte
+--Procedúra počíta všetky príjmy a výdavky na danom účte
 CREATE OR REPLACE PROCEDURE Transakcie_na_bankovom_ucte (cislo_uctu STRING) AS
     CURSOR prikazy_uctu is SELECT * FROM PRIKAZ WHERE c_uctu = cislo_uctu;
     riadok_kurzoru PRIKAZ%ROWTYPE;
@@ -400,8 +395,7 @@ CREATE OR REPLACE PROCEDURE Transakcie_na_bankovom_ucte (cislo_uctu STRING) AS
     END;
 /
 
-
--- Procedura vypíše všetkých klientov, ktorí majú dnes narodeniny => funkcia sysdate()
+-- Procedúra vypíše všetkých klientov, ktorí majú dnes narodeniny => funkcia sysdate()
 CREATE OR REPLACE PROCEDURE Klienti_Narodeniny AS
     CURSOR datum_narodenia is SELECT meno, priezvisko, datum_narodenia FROM KLIENT;
     menoINT KLIENT.meno%type;
@@ -438,7 +432,7 @@ CREATE OR REPLACE PROCEDURE Klienti_Narodeniny AS
 /
 
 begin
- Tranzakcie_na_bankovom_ucet('1234567987/0300');
+ Transakcie_na_bankovom_ucte('1234567987/0300');
 end;
 /
 
